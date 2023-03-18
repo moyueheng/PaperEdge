@@ -28,7 +28,7 @@ if __name__ == '__main__':
                         default='models/G_w_checkpoint_13820.pt')
     parser.add_argument('--Tnet_ckpt', type=str,
                         default='models/L_w_checkpoint_27640.pt')
-    parser.add_argument('--img_path', type=str, default='images/3.jpg')
+    parser.add_argument('--img_path', type=str, default='images/1.jpg')
     parser.add_argument('--out_dir', type=str, default='output')
     args = parser.parse_args()
 
@@ -37,11 +37,13 @@ if __name__ == '__main__':
     Path(dst_dir).mkdir(parents=True, exist_ok=True)
 
     netG = GlobalWarper().to('cuda')
-    netG.load_state_dict(torch.load(args['Enet_ckpt'])['G'])
+    # netG.load_state_dict(torch.load(args['Enet_ckpt'])['G'])
+    netG.load_state_dict(torch.load(args.Enet_ckpt)['G'])
     netG.eval()
 
     netL = LocalWarper().to('cuda')
-    netL.load_state_dict(torch.load(args['Tnet_ckpt'])['L'])
+    # netL.load_state_dict(torch.load(args['Tnet_ckpt'])['L'])
+    netL.load_state_dict(torch.load(args.Tnet_ckpt)['L'])
     netL.eval()
 
     warpUtil = WarperUtil(64).to('cuda')
@@ -51,11 +53,15 @@ if __name__ == '__main__':
         x = load_img(img_path)
         x = x.unsqueeze(0)
         x = x.to('cuda')
+
+        # netG模型的操作
         d = netG(x)  # d_E the edged-based deformation field
         d = warpUtil.global_post_warp(d, 64)
-        gs_d = copy.deepcopy(d)
-
+        gs_d = copy.deepcopy(d) # newG result
+        
         d = F.interpolate(d, size=256, mode='bilinear', align_corners=True)
+
+        # netL模型的操作
         y0 = F.grid_sample(x, d.permute(0, 2, 3, 1), align_corners=True)
         ls_d = netL(y0)
         ls_d = F.interpolate(ls_d, size=256, mode='bilinear', align_corners=True)
